@@ -1,0 +1,10 @@
+# Copy to terraform.tfvars and fill in values before running terraform apply.
+# NEVER commit terraform.tfvars to git — it's in .gitignore.
+
+environment = "dev"
+location    = "eastus"
+image_tag   = "latest"
+
+# These are sensitive — set them only in terraform.tfvars
+tavily_api_key          = "tvly-..."
+postgres_admin_password = "ChangeMe123!"

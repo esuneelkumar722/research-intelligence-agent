@@ -1,0 +1,96 @@
+[tool.poetry]
+name = "research-intelligence-agent"
+version = "0.1.0"
+description = "Production-grade Multi-Agent Research Intelligence Platform — LangGraph + LangChain on Azure"
+authors = ["Enturi Suneelkumar <esuneelkumar722@github.com>"]
+readme = "README.md"
+packages = [{ include = "app" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+# ─── LangChain / LangGraph ──────────────────────────────────────────────────
+langgraph                       = "^0.4"
+langchain                       = "^0.3"
+langchain-openai                = "^0.2"
+langchain-community             = "^0.3"
+langchain-core                  = "^0.3"
+langgraph-checkpoint-postgres   = "^2.0"
+
+# ─── FastAPI / ASGI ─────────────────────────────────────────────────────────
+fastapi                         = "^0.115"
+uvicorn                         = { extras = ["standard"], version = "^0.32" }
+sse-starlette                   = "^2.1"
+
+# ─── Azure SDKs (Managed Identity — zero secrets) ───────────────────────────
+azure-identity                  = "^1.19"
+azure-keyvault-secrets          = "^4.9"
+azure-ai-contentsafety          = "^1.0"
+
+# ─── Agent Tools ────────────────────────────────────────────────────────────
+tavily-python                   = "^0.5"
+yfinance                        = "^0.2"
+wikipedia                       = "^1.4"
+
+# ─── Database / State ───────────────────────────────────────────────────────
+psycopg                         = { extras = ["binary", "pool"], version = "^3.2" }
+asyncpg                         = "^0.30"
+
+# ─── Cache (Redis) ──────────────────────────────────────────────────────────
+redis                           = { extras = ["hiredis"], version = "^5.2" }
+
+# ─── Observability (OTel → Azure Monitor; LangFuse self-hosted) ─────────────
+opentelemetry-api                           = "^1.29"
+opentelemetry-sdk                           = "^1.29"
+opentelemetry-instrumentation-fastapi       = "^0.50b0"
+opentelemetry-instrumentation-httpx         = "^0.50b0"
+opentelemetry-exporter-otlp-proto-grpc      = "^1.29"
+azure-monitor-opentelemetry                 = "^1.6"
+langfuse                                    = "^2.57"
+
+# ─── Settings / Validation ──────────────────────────────────────────────────
+pydantic                        = "^2.10"
+pydantic-settings               = "^2.6"
+
+# ─── Rate Limiting ──────────────────────────────────────────────────────────
+slowapi                         = "^0.1.9"
+
+# ─── Auth (JWT validation) ──────────────────────────────────────────────────
+python-jose                     = { extras = ["cryptography"], version = "^3.3" }
+httpx                           = "^0.28"
+
+# ─── Token counting ─────────────────────────────────────────────────────────
+tiktoken                        = "^0.8"
+
+[tool.poetry.group.dev.dependencies]
+pytest                  = "^8.3"
+pytest-asyncio          = "^0.24"
+pytest-cov              = "^6.0"
+ruff                    = "^0.8"
+mypy                    = "^1.13"
+respx                   = "^0.22"          # httpx mocking
+pytest-mock             = "^3.14"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+# ─── Ruff (linter + formatter) ───────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "S", "B", "A"]
+ignore = ["S101"]  # allow assert in tests
+
+# ─── Mypy ────────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+# ─── Pytest ──────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

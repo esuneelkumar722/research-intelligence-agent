@@ -1,0 +1,24 @@
+# Development-only Dockerfile — Python backend only, no frontend build.
+# Used by docker-compose.yml for local development.
+# The production Dockerfile (Dockerfile) includes the full frontend build.
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install poetry
+RUN pip install --no-cache-dir poetry==1.8.3
+
+# Install Python dependencies (cached layer)
+COPY pyproject.toml poetry.lock* ./
+RUN poetry config virtualenvs.create false \
+  && poetry install --only main --no-interaction --no-ansi
+
+# Application code is mounted as a volume in docker-compose for hot reload.
+# This COPY is here as a fallback (e.g., if running without volumes).
+COPY app/backend/ ./app/backend/
+COPY app/__init__.py ./app/__init__.py
+
+EXPOSE 8000
+
+CMD ["python", "-m", "app.backend.main"]

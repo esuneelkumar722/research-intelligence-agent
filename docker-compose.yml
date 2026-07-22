@@ -1,0 +1,122 @@
+# Local development stack — mirrors production services exactly.
+# Start with: make dev   (or: docker compose up -d)
+#
+# Services:
+#   backend   — FastAPI + LangGraph application
+#   postgres  — LangGraph state checkpointer (same as Azure PostgreSQL Flexible)
+#   redis     — Rate limiter + semantic cache (same as Azure Cache for Redis)
+#   langfuse  — Self-hosted LLM observability (same as production Container App)
+#
+# Note: LangFuse requires its own Postgres instance (separate from app Postgres).
+# In production both run on separate Azure PostgreSQL Flexible Servers.
+
+name: research-intelligence-agent
+
+services:
+
+  # ── Application backend ──────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      # Dev Dockerfile: Python only, no frontend build required.
+      # Production image (with frontend) is built in CI via app/backend/Dockerfile.
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=development
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=research_agent
+      - POSTGRES_USER=research_user
+      - POSTGRES_PASSWORD=local_dev_password
+      - REDIS_URL=redis://redis:6379/0
+      - LANGFUSE_HOST=http://langfuse:3000
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-pk-lf-local}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-sk-lf-local}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT:-gpt-4o}
+      - ENABLE_AUTH=false
+      - ENABLE_SAFETY=false
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      # Hot reload in dev — mount source code
+      - ./app/backend:/app/app/backend:ro
+    restart: unless-stopped
+
+  # ── PostgreSQL — LangGraph checkpoint storage ─────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: research_agent
+      POSTGRES_USER: research_user
+      POSTGRES_PASSWORD: local_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U research_user -d research_agent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Redis — rate limiter + semantic cache ─────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  # ── LangFuse — self-hosted LLM observability ──────────────────────────────
+  # Same Docker image as used in the production Container App.
+  # Access UI at http://localhost:3000
+  langfuse:
+    image: langfuse/langfuse:latest
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://langfuse_user:langfuse_password@langfuse-postgres:5432/langfuse
+      NEXTAUTH_SECRET: local-dev-secret-change-in-prod
+      NEXTAUTH_URL: http://localhost:3000
+      TELEMETRY_ENABLED: "false"
+    depends_on:
+      langfuse-postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Separate Postgres for LangFuse (same in production — two separate servers)
+  langfuse-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: langfuse
+      POSTGRES_USER: langfuse_user
+      POSTGRES_PASSWORD: langfuse_password
+    volumes:
+      - langfuse_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse_user -d langfuse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  langfuse_postgres_data:
