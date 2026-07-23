@@ -35,10 +35,13 @@ def _get_rate_limit_key(request: Request) -> str:
 
 settings = get_settings()
 
-# Redis storage URI keeps rate limit counters distributed across pod replicas.
-# Falls back to in-memory if Redis is unavailable (dev-only behaviour).
+# Use Redis when available; fall back to in-memory for local dev without Redis.
+# In production, Redis is always present (Azure Cache for Redis).
+# storage_uri=None tells slowapi to use its default in-memory backend.
+_storage_uri: str | None = settings.redis_url if settings.redis_url else None
+
 limiter = Limiter(
     key_func=_get_rate_limit_key,
-    storage_uri=settings.redis_url,
+    storage_uri=_storage_uri,
     default_limits=[f"{settings.rate_limit_per_minute}/minute"],
 )

@@ -28,9 +28,6 @@ on:
         default: "apply"
         type: choice
         options: [apply, destroy]
-  push:
-    branches: [main]
-    paths-ignore: ["docs/**", "*.md"]
 
 env:
   PYTHON_VERSION: "3.11"
